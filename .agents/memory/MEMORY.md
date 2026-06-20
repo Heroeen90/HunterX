@@ -1,0 +1,1 @@
+- [HunterX API workflow workaround](hunterx-api-workflow.md) — artifact-managed workflow port detection broken; use standalone "HunterX API" workflow without waitForPort
