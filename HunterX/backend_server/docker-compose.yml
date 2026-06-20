@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  hunterx-server:
+    build: .
+    image: hunterx-server:latest
+    container_name: hunterx-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - HUNTERX_API_KEY=${HUNTERX_API_KEY:-}
+    volumes:
+      - /tmp:/tmp
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: host
+    security_opt:
+      - no-new-privileges:false

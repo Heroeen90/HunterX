@@ -1,0 +1,80 @@
+name: Build & Push Docker Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend_server/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/hunterx-server
+
+jobs:
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend_server
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to server (optional)
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    environment: production
+
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          username: ${{ vars.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            docker pull ghcr.io/${{ github.repository }}/hunterx-server:latest
+            docker stop hunterx-server || true
+            docker rm hunterx-server || true
+            docker run -d \
+              --name hunterx-server \
+              --restart unless-stopped \
+              --network host \
+              --cap-add NET_ADMIN \
+              --cap-add NET_RAW \
+              -p 5000:5000 \
+              -e PORT=5000 \
+              -e HUNTERX_API_KEY=${{ secrets.HUNTERX_API_KEY }} \
+              ghcr.io/${{ github.repository }}/hunterx-server:latest
