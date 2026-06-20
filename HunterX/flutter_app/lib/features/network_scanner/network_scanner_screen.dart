@@ -105,7 +105,7 @@ class NetworkScannerScreen extends ConsumerWidget {
               subtitle: host.hostname != null ? Text(host.hostname!) : null,
               trailing: Text('${host.responseMs}ms',
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-              onTap: () => context.go('/ports?host=${host.ip}'),
+              onTap: () {},
             ),
           ),
         );
