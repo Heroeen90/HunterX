@@ -25,7 +25,7 @@ dependencies:
   http: ^1.2.1
 
   # Terminal / SSH
-  xterm: ^3.4.0
+  xterm: ^3.5.0
   dartssh2: ^2.9.0
 
   # UI
