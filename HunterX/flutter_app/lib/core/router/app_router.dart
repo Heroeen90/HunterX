@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/network_scanner/network_scanner_screen.dart';
 import '../../features/port_scanner/port_scanner_screen.dart';
@@ -15,33 +15,28 @@ import '../../features/browser_tunnel/browser_tunnel_screen.dart';
 import '../../features/server_control/server_control_screen.dart';
 import '../../features/settings/settings_screen.dart';
 
-part 'app_router.g.dart';
-
-@riverpod
-GoRouter appRouter(AppRouterRef ref) {
+final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
-      GoRoute(path: '/network', builder: (_, __) => const NetworkScannerScreen()),
-      GoRoute(path: '/ports', builder: (_, __) => const PortScannerScreen()),
-      GoRoute(path: '/wifi', builder: (_, __) => const WifiAnalyzerScreen()),
-      GoRoute(path: '/web', builder: (_, __) => const WebScannerScreen()),
-      GoRoute(path: '/dns', builder: (_, __) => const DnsOsintScreen()),
-      GoRoute(path: '/exploit', builder: (_, __) => const ExploitationScreen()),
-      GoRoute(path: '/passwords', builder: (_, __) => const PasswordToolsScreen()),
+      GoRoute(path: '/network-scanner', builder: (_, __) => const NetworkScannerScreen()),
+      GoRoute(path: '/port-scanner', builder: (_, __) => const PortScannerScreen()),
+      GoRoute(path: '/wifi-analyzer', builder: (_, __) => const WifiAnalyzerScreen()),
+      GoRoute(path: '/web-scanner', builder: (_, __) => const WebScannerScreen()),
+      GoRoute(path: '/dns-osint', builder: (_, __) => const DnsOsintScreen()),
+      GoRoute(path: '/exploitation', builder: (_, __) => const ExploitationScreen()),
+      GoRoute(path: '/password-tools', builder: (_, __) => const PasswordToolsScreen()),
+      GoRoute(path: '/ssh-terminal', builder: (_, __) => const SshTerminalScreen()),
+      GoRoute(path: '/packet-capture', builder: (_, __) => const PacketCaptureScreen()),
       GoRoute(
-        path: '/terminal',
-        builder: (_, state) {
-          final host = state.uri.queryParameters['host'];
-          final port = int.tryParse(state.uri.queryParameters['port'] ?? '22');
-          return SshTerminalScreen(host: host, port: port ?? 22);
-        },
+        path: '/browser-tunnel',
+        builder: (_, state) => BrowserTunnelScreen(
+          url: state.uri.queryParameters['url'] ?? '',
+        ),
       ),
-      GoRoute(path: '/capture', builder: (_, __) => const PacketCaptureScreen()),
-      GoRoute(path: '/browser', builder: (_, __) => const BrowserTunnelScreen()),
-      GoRoute(path: '/server', builder: (_, __) => const ServerControlScreen()),
+      GoRoute(path: '/server-control', builder: (_, __) => const ServerControlScreen()),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
     ],
   );
-}
+});
