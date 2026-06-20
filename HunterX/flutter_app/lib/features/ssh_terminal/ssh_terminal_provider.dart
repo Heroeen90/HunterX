@@ -1,34 +1,42 @@
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dartssh2/dartssh2.dart';
-import 'package:xterm/xterm.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SshState {
-  final bool connecting;
-  final bool connected;
+  final bool isConnected;
+  final bool isConnecting;
   final String? error;
+  final List<Map<String, String>> savedConnections;
 
-  const SshState({this.connecting = false, this.connected = false, this.error});
+  const SshState({
+    this.isConnected = false,
+    this.isConnecting = false,
+    this.error,
+    this.savedConnections = const [],
+  });
 
-  SshState copyWith({bool? connecting, bool? connected, String? error}) =>
-      SshState(
-        connecting: connecting ?? this.connecting,
-        connected: connected ?? this.connected,
-        error: error,
-      );
+  SshState copyWith({
+    bool? isConnected,
+    bool? isConnecting,
+    String? error,
+    List<Map<String, String>>? savedConnections,
+  }) {
+    return SshState(
+      isConnected: isConnected ?? this.isConnected,
+      isConnecting: isConnecting ?? this.isConnecting,
+      error: error,
+      savedConnections: savedConnections ?? this.savedConnections,
+    );
+  }
 }
-
-final sshStateProvider = StateNotifierProvider.autoDispose<SshNotifier, SshState>((ref) {
-  return SshNotifier();
-});
 
 class SshNotifier extends StateNotifier<SshState> {
   SSHClient? _client;
   SSHSession? _session;
+  final _storage = const FlutterSecureStorage();
 
   SshNotifier() : super(const SshState());
-
-  Terminal get terminal => _terminal;
-  final _terminal = Terminal(maxLines: 10000);
 
   Future<void> connect({
     required String host,
@@ -36,52 +44,43 @@ class SshNotifier extends StateNotifier<SshState> {
     required String username,
     String? password,
     String? privateKey,
+    required Function(String) onOutput,
   }) async {
-    if (state.connecting || state.connected) return;
-    state = state.copyWith(connecting: true, error: null);
-
+    state = state.copyWith(isConnecting: true, error: null);
     try {
-      final socket = await SSHSocket.connect(host, port, timeout: const Duration(seconds: 10));
+      final socket = await SSHSocket.connect(host, port);
       _client = SSHClient(
         socket,
         username: username,
         onPasswordRequest: password != null ? () => password : null,
-        identities: privateKey != null ? [SSHKeyPair.fromPem(privateKey)] : null,
+        identities: privateKey != null
+            ? SSHKeyPair.fromPem(privateKey)
+            : null,
       );
 
-      _session = await _client!.shell(
-        pty: SSHPtyConfig(
-          type: 'xterm-256color',
-          width: 80,
-          height: 24,
-        ),
-      );
-
-      state = state.copyWith(connecting: false, connected: true);
+      _session = await _client!.shell();
+      state = state.copyWith(isConnected: true, isConnecting: false);
 
       _session!.stdout.listen((data) {
-        _terminal.write(String.fromCharCodes(data));
+        onOutput(String.fromCharCodes(data));
       });
 
       _session!.stderr.listen((data) {
-        _terminal.write(String.fromCharCodes(data));
-      });
-
-      _terminal.onOutput = (data) {
-        _session!.stdin.add(data.codeUnits);
-      };
-
-      _session!.done.then((_) {
-        state = state.copyWith(connected: false);
-        _terminal.write('\r\n[Session closed]\r\n');
+        onOutput(String.fromCharCodes(data));
       });
     } catch (e) {
-      state = state.copyWith(connecting: false, connected: false, error: e.toString());
+      state = state.copyWith(
+        isConnected: false,
+        isConnecting: false,
+        error: e.toString(),
+      );
     }
   }
 
-  void resize(int cols, int rows) {
-    _session?.resizeTerminal(cols, rows);
+  void sendCommand(String command) {
+    if (_session == null) return;
+    final data = Uint8List.fromList('$command\n'.codeUnits);
+    _session!.stdin.add(data);
   }
 
   void disconnect() {
@@ -89,7 +88,7 @@ class SshNotifier extends StateNotifier<SshState> {
     _client?.close();
     _session = null;
     _client = null;
-    state = state.copyWith(connected: false);
+    state = state.copyWith(isConnected: false);
   }
 
   @override
@@ -98,3 +97,7 @@ class SshNotifier extends StateNotifier<SshState> {
     super.dispose();
   }
 }
+
+final sshProvider = StateNotifierProvider<SshNotifier, SshState>(
+  (ref) => SshNotifier(),
+);
