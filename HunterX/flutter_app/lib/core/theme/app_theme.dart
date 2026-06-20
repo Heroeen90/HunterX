@@ -15,6 +15,8 @@ class AppTheme {
   static const Color warning = Color(0xFFF59E0B);
   static const Color textPrimary = Color(0xFFF1F5F9);
   static const Color textSecondary = Color(0xFF94A3B8);
+  static const Color muted = Color(0xFF555555);
+  static const Color error = Color(0xFFFF1744);
   static const Color border = Color(0xFF1E293B);
   static const Color terminalGreen = Color(0xFF00FF88);
   static const Color terminalBg = Color(0xFF050A0E);
@@ -106,4 +108,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       );
+
+  // Helper method for darkTheme alias
+  static ThemeData get darkTheme => dark;
 }
